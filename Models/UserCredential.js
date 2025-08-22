@@ -1,52 +1,35 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
-const userCredentialSchema = new mongoose.Schema(
-  {
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-    password: {
-      type: String,
-      required: true,
-    },
-    role: {
-      type: String,
-      enum: ["user", "admin"],
-      default: "user",
-    },
-    refreshToken: {
-      type: String,
-      default: null,
-    },
+const userSchema = new mongoose.Schema({
+  uid: { type: String, unique: true },
+  partner_1: { type: String, required: true },
+  partner_2: { type: String, required: true },
+  email: { type: String, required: true, unique: true, lowercase: true },
+  password: { type: String, required: true, minlength: 6 },
+  role: { type: String, enum: ["user", "admin", "officiant"], default: "user" },
+  address: String,
+  phone: String,
+  weddingDate: Date,
+  isVerified: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+  refreshToken: {
+    type: String,
+    default: null,
   },
-  {
-    timestamps: true,
-  }
-);
-
-// Hash password before saving
-userCredentialSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
 });
 
-// Method to compare passwords
-userCredentialSchema.methods.comparePassword = async function (
-  candidatePassword
-) {
-  return await bcrypt.compare(candidatePassword, this.password);
+// Hash password before save
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+// Compare password
+userSchema.methods.comparePassword = function (enteredPassword) {
+  return bcrypt.compare(enteredPassword, this.password);
 };
 
-module.exports = mongoose.model("UserCredential", userCredentialSchema);
+module.exports = mongoose.model("User", userSchema);

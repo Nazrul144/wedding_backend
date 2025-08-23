@@ -61,6 +61,11 @@ exports.registerUser = async (req, res) => {
   }
 };
 
+// Social Login (Google, Facebook) 
+
+exports.socialLogin = async (req, res) => {
+}
+
 
 // ✅ Verify Email
 exports.verifyEmail = async (req, res) => {
@@ -129,6 +134,33 @@ exports.logoutUser = async (req, res) => {
   }
   res.sendStatus(204);
 };
+
+// Get user
+exports.getUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password -refreshToken");
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+    res.json({ user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get All Users (Admin only)
+exports.getAllUsers = async (req, res) => {
+  // if (req.user.role !== "admin") {
+  //   return res.status(403).json({ msg: "Access denied" });
+  // }
+  try {
+    const users = await User.find().select("-password -refreshToken");
+    res.json({ users });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 
 // ✅ Protected Example
 exports.getDashboard = async (req, res) => {

@@ -17,6 +17,7 @@ require("./DB/Connection");
 // Routes
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const userRoutes = require("./Routes/userRoute");
+const { default: seedAdmin } = require("./DB/SuperUser");
 app.use("/api/users", userRoutes); 
 
 // Root
@@ -26,5 +27,6 @@ app.get("/", (req, res) => {
 
 // Start Server
 app.listen(PORT, () => {
+  seedAdmin()
   console.log(`Server running on port ${PORT}`);
 });

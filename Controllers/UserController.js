@@ -247,7 +247,7 @@ exports.updateUser = async (req, res) => {
     const updateFields = {};
     const allowedFields = [
       "partner_1",
-      "partner_2",
+      "part ner_2",
       "phone",
       "bio",
       "bookingMoney",
@@ -289,7 +289,7 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-// ✅ Protected Example
+//  Protected Example
 exports.getDashboard = async (req, res) => {
   res.json({ msg: "Welcome to dashboard", user: req.user });
 };

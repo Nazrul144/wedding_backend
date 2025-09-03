@@ -14,7 +14,7 @@ const userSchema = new mongoose.Schema({
   profilePicture: String,
   name: String,
   bookingMoney: Number,
-  bio: String,
+  bio: String, 
   isVerified: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

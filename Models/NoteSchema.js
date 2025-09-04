@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const notificationSchema = new mongoose.Schema({
+const noteSchema = new mongoose.Schema({
   title: { type: String, required: true },
   message: { type: String, required: true },
   from_userName: { type: String, required: true },
@@ -13,4 +13,4 @@ const notificationSchema = new mongoose.Schema({
 
 
 
-module.exports = mongoose.model("notification", notificationSchema);
+module.exports = mongoose.model("note", noteSchema)

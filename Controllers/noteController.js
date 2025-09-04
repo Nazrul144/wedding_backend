@@ -1,23 +1,76 @@
-const notification= require("../Models/NoteSchema");
+const note = require("../Models/NoteSchema");
 
-
-exports.createNotification = async (req, res) => {
-  const { title, message, from_userName, from_userId, to_userId , related_to} = req.body;
+// create note function
+exports.createNote = async (req, res) => {
+  const { title, message, from_userName, from_userId, to_userId, related_to } =
+    req.body;
 
   try {
-    const newNotification = new notification({
+    const newNote = new note({
       title,
       message,
       from_userName,
       from_userId,
       to_userId,
-      related_to
+      related_to,
     });
+    console.log("New note created:", newNote);
 
-    await newNotification.save();
-    res.status(201).json({ msg: "Notification created successfully", newNotification });
+    await newNote.save();
+    res.status(201).json({ msg: "Note created successfully", newNote });
   } catch (err) {
-    console.error("Error creating notification:", err);
+    console.error("Error creating note:", err);
     res.status(500).json({ error: err.message });
   }
-}
+};
+
+// update the note
+exports.updateNote = async (req, res) => {
+  const noteId = req.params.id;
+  const updates = req.body;
+  console.log("Update request for note ID:", noteId, "with data:", updates);
+  try {
+    const updatedNote = await note.findByIdAndUpdate(noteId, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedNote) {
+      return res.status(404).json({ error: "Note not found" });
+    }
+
+    res.status(200).json({ msg: "Note updated successfully", updatedNote });
+  } catch (err) {
+    console.error("Error updating note:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// get notes by user ID
+exports.getNotesByUserId = async (req, res) => {
+  const userId = req.params.userId;
+  try {
+    const notes = await note
+      .find({ to_userId: userId })
+      .sort({ createdAt: -1 });
+    res.status(200).json(notes);
+  } catch (err) {
+    console.error("Error fetching notes:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// delete note from user side
+exports.deleteNote = async (req, res) => {
+  const noteId = req.params.id;
+  try {
+    const deletedNote = await note.findByIdAndDelete(noteId);
+    if (!deletedNote) {
+      return res.status(404).json({ error: "Note not found" });
+    }
+    res.status(200).json({ msg: "Note deleted successfully", deletedNote });
+  } catch (err) {
+    console.error("Error deleting note:", err);
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -18,6 +18,7 @@ require("./DB/Connection");
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const userRoutes = require("./Routes/userRoute");
 const noteRoutes = require("./Routes/noteRoute");
+const eventRoutes = require("./Routes/eventRoute");
 // const { default: seedAdmin } = require("./DB/SuperUser");
 
 // ====================User Routes=========================
@@ -25,6 +26,9 @@ app.use("/api/users", userRoutes);
 
 // ====================Note Routes=========================
 app.use("/api/notes", noteRoutes);
+
+// ===================Event Routes=========================
+app.use("/api/events", eventRoutes);
 
 // Root
 app.get("/", (req, res) => {

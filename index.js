@@ -20,6 +20,7 @@ const userRoutes = require("./Routes/userRoute");
 const noteRoutes = require("./Routes/noteRoute");
 const eventRoutes = require("./Routes/eventRoute");
 const reviewRoute = require("./Routes/reviewRoute");
+const NotificationRoute = require("./Routes/notificationRoute");
 // const { default: seedAdmin } = require("./DB/SuperUser");
 
 // ====================User Routes=========================
@@ -33,6 +34,8 @@ app.use("/api/events", eventRoutes);
 
 // ===================Review Routes=========================
 app.use("/api/reviews", reviewRoute);
+// ===================Notification Routes=========================
+app.use("/api/notification", NotificationRoute);
 
 // Root
 app.get("/", (req, res) => {

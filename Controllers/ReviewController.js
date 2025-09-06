@@ -1,4 +1,5 @@
 const review = require("./../Models/Review");
+const { createNotification } = require("./notificationController");
 
 
 // Create a riview for an event
@@ -38,6 +39,10 @@ exports.createReview = async (req, res) => {
       eventName,
     });
     await newReview.save();
+    console.log(
+      `You got a new review for ${eventName} from ${userName} userId: ${userId}`
+    );
+    await createNotification(officiantId, "review_created", `You got a new review for ${eventName} from ${userName} userId: ${userId}`);
     res
       .status(201)
       .json({ msg: "Review created successfully", review: newReview });
@@ -59,7 +64,7 @@ exports.getReviewsForOfficiant = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
+ 
 // update review visibility
 exports.updateReviewVisibility = async (req, res) => {
     try {

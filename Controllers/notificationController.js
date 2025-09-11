@@ -17,7 +17,7 @@ exports.getUserNotifications = async (req, res) => {
 //update for Toggle read status
 exports.toggleReadStatus = async (req, res) => {
   try {
-    const { id } = req.para                                                                                                                                                                                                                                                                                                                                                                                                                                     ms;
+    const { id } = req.params;
     const notification = await Notification.findById(id);
 
     if (!notification) {

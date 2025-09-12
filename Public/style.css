@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Open+Sans:wght@300;600&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Open Sans', sans-serif;
+  color: #fff;
+  overflow: hidden;
+}
+
+.hero {
+  height: 100vh;
+  background: url("https://images.unsplash.com/photo-1529634853404-40a5a03c0c07?auto=format&fit=crop&w=1350&q=80") no-repeat center center/cover;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.content {
+  text-align: center;
+  position: relative;
+  z-index: 2;
+}
+
+h1 {
+  font-family: 'Great Vibes', cursive;
+  font-size: 4rem;
+  margin-bottom: 20px;
+  animation: fadeIn 2s ease forwards;
+}
+
+p {
+  font-size: 1.2rem;
+  margin-bottom: 30px;
+  animation: slideUp 2s ease forwards;
+}
+
+.btn {
+  text-decoration: none;
+  background: #e91e63;
+  padding: 12px 30px;
+  border-radius: 30px;
+  color: white;
+  font-weight: 600;
+  transition: 0.3s ease;
+  display: inline-block;
+}
+
+.btn:hover {
+  background: #c2185b;
+}
+
+.fade-in {
+  opacity: 0;
+  animation: fadeIn 2s forwards;
+}
+
+.slide-up {
+  opacity: 0;
+  transform: translateY(30px);
+  animation: slideUp 2s forwards 1s;
+}
+
+.bounce {
+  animation: bounce 2s infinite;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+  60% { transform: translateY(-5px); }
+}

@@ -21,3 +21,5 @@ router.put("/update/:id", auth, updateScheduleStatus);
 
 // Delete a schedule
 router.delete("/delete/:id", auth, deleteSchedule);
+
+module.exports = router;

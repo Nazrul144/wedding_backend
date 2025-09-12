@@ -2,6 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const path = require("path");
+const http = require("http");
 require("dotenv").config();
 
 const app = express();
@@ -10,40 +11,43 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(bodyParser.json());
 app.use(cors());
- 
+
 // DB Connection
 require("./DB/Connection");
 
-// Routes
+// Serve uploads folder
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+// Routes
 const userRoutes = require("./Routes/userRoute");
 const noteRoutes = require("./Routes/noteRoute");
 const eventRoutes = require("./Routes/eventRoute");
 const reviewRoute = require("./Routes/reviewRoute");
-const NotificationRoute = require("./Routes/notificationRoute");
-// const { default: seedAdmin } = require("./DB/SuperUser");
+const notificationRoute = require("./Routes/notificationRoute");
+const scheduleRoute = require("./Routes/scheduleRoute");
 
-// ====================User Routes=========================
-app.use("/api/users", userRoutes); 
+app.use("/api/users", userRoutes);
 
-// ====================Note Routes=========================
 app.use("/api/notes", noteRoutes);
-
-// ===================Event Routes=========================
 app.use("/api/events", eventRoutes);
-
-// ===================Review Routes=========================
 app.use("/api/reviews", reviewRoute);
-// ===================Notification Routes=========================
-app.use("/api/notification", NotificationRoute);
+app.use("/api/notifications", notificationRoute);
+app.use("/api/schedule", scheduleRoute);
 
-// Root
+// Serve frontend/public folder
+app.use(express.static(path.join(__dirname, "public")));
 app.get("/", (req, res) => {
-  res.send("Welcome to the WeddingBiz API 🚀");
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+// Create HTTP server
+const server = http.createServer(app);
+
+// Import and setup Socket.IO
+const setupSocket = require("./Socket/socket");
+setupSocket(server);
+
 // Start Server
-app.listen(PORT, () => {
-  // seedAdmin()
-  console.log(`Server running on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });

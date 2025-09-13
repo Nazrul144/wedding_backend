@@ -9,7 +9,9 @@ const {
   getAllUsers,
   forgetPassword,
   resetPassword,
-  updateUser, 
+  updateUser,
+  getOfficiants,
+  getOfficiantDetails, 
 } = require("../Controllers/UserController");
 const auth = require("../Middleware/authMiddleware");
 const upload = require("../Middleware/upload"); 
@@ -22,6 +24,8 @@ router.post("/login", loginUser);
 router.post("/forget", forgetPassword);
 router.post("/reset-password/:token", resetPassword);
 router.get("/verify/:token", verifyEmail);
+router.get("/officiants", getOfficiants);
+router.get("/officiants/:id", getOfficiantDetails);
 
 // Protected
 router.get("/get-user", auth, getUser);

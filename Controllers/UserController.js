@@ -289,6 +289,35 @@ exports.updateUser = async (req, res) => {
   }
 };
 
+// get officiants for public
+exports.getOfficiants = async (req, res) => {
+  try {
+    const officiants = await User.find({ role: "officiant", isVerified: true });
+    res.status(200).json({ officiants });
+  } catch (err) {
+    console.error("Error fetching officiants:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// get individual officiant details
+exports.getOfficiantDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log("Fetching officiant with ID:", id);
+    
+    const officiant = await User.findById(id);
+    if (!officiant) {
+      return res.status(404).json({ msg: "Officiant not found" });
+    }
+    res.status(200).json({ officiant });
+  } catch (err) {
+    console.error("Error fetching officiant details:", err);
+    console.error("Error message:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 //  Protected Example
 exports.getDashboard = async (req, res) => {
   res.json({ msg: "Welcome to dashboard", user: req.user });

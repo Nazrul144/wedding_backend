@@ -88,3 +88,23 @@ exports.updateReviewVisibility = async (req, res) => {
     }
 };
 
+// Show reviews publicly based on visibility
+exports.getPublicReviews = async (req, res) => {
+    try {
+        const reviews = await review.find({ isVisible: true });
+        res.status(200).json({ reviews });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// get public reviews of an officiant
+exports.getPublicReviewsForOfficiant = async (req, res) => {
+    try {
+        const { officiantId } = req.params;
+        const reviews = await review.find({ officiantId, isVisible: true });
+        res.status(200).json({ reviews });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};

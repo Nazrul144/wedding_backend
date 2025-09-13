@@ -92,6 +92,7 @@ exports.updateReviewVisibility = async (req, res) => {
 exports.getPublicReviews = async (req, res) => {
     try {
         const reviews = await review.find({ isVisible: true });
+        console.log("Public reviews fetched:", reviews.length);
         res.status(200).json({ reviews });
     } catch (err) {
         res.status(500).json({ error: err.message });

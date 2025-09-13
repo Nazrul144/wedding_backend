@@ -9,6 +9,7 @@ exports.addSubscriber = async (req, res) => {
     }
     // Check if email already exists
     const existingSubscriber = await subscriber.findOne({ email });
+    console.log("Existing subscriber check:", existingSubscriber);
     if (existingSubscriber) {
       return res.status(400).json({ error: "Email already subscribed" });
     }

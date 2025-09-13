@@ -25,14 +25,23 @@ const eventRoutes = require("./Routes/eventRoute");
 const reviewRoute = require("./Routes/reviewRoute");
 const notificationRoute = require("./Routes/notificationRoute");
 const scheduleRoute = require("./Routes/scheduleRoute");
+const marketingOthersRoute = require("./Routes/marketing_othersRoute");
 
+
+// ==========User routes==============
 app.use("/api/users", userRoutes);
-
+// ==========Note routes==============
 app.use("/api/notes", noteRoutes);
+// ==========Event routes=============
 app.use("/api/events", eventRoutes);
+// ==========Review routes============
 app.use("/api/reviews", reviewRoute);
+// ==========Notification routes======
 app.use("/api/notifications", notificationRoute);
+// ==========Schedule routes==========
 app.use("/api/schedule", scheduleRoute);
+// ==========Marketing others routes==
+app.use("/api/marketing", marketingOthersRoute);
 
 // Serve frontend/public folder
 app.use(express.static(path.join(__dirname, "public")));

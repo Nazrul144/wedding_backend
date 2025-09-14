@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 
 const EMAIL_SECRET = process.env.EMAIL_SECRET;
+
 const createTokens = (userId, role) => {
   const accessToken = jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
     expiresIn: "45m",
@@ -35,7 +36,7 @@ exports.registerUser = async (req, res) => {
     const emailToken = jwt.sign({ id: user._id }, EMAIL_SECRET, {
       expiresIn: "1d",
     });
-    const url = `http://localhost:5000/api/users/verify/${emailToken}`;
+    const url = `http://localhost:3000/verify/${emailToken}`;
 
     // Send mail
     const transporter = nodemailer.createTransport({
@@ -48,9 +49,61 @@ exports.registerUser = async (req, res) => {
 
     await transporter.sendMail({
       to: email,
-      subject: "Verify your email",
-      html: `Click <a href="${url}">here</a> to verify your account.`,
+      subject: "Verify your email - ERIE WEDDING OFFICIANT",
+      html: `
+  <!DOCTYPE html>
+  <html lang="en" style="margin:0;padding:0;">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Email Verification</title>
+    </head>
+    <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#fff8f0;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#fff8f0; padding:40px 0;">
+        <tr>
+          <td align="center">
+            <table width="600" border="0" cellspacing="0" cellpadding="0" style="background:#ffffff; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.08);">
+              <tr>
+                <td style="background:linear-gradient(90deg, #ffb347, #ffcc33); padding:20px; border-radius:12px 12px 0 0; text-align:center;">
+                  <h1 style="margin:0; font-size:28px; color:#ffffff;">ERIE WEDDING OFFICIANT</h1>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:30px; text-align:left; color:#333333;">
+                  <h2 style="color:#ff9900; margin-top:0;">Verify Your Email</h2>
+                  <p style="font-size:16px; line-height:1.6; color:#555555;">
+                    Thank you for signing up with <strong>ERIE WEDDING OFFICIANT</strong>!  
+                    Before we can get started, we just need to confirm that this email address belongs to you.  
+                  </p>
+                  <p style="font-size:16px; line-height:1.6; color:#555555;">
+                    Please click the button below to verify your account:
+                  </p>
+                  <div style="text-align:center; margin:30px 0;">
+                    <a href="${url}" target="_blank" style="background:linear-gradient(90deg,#ffb347,#ff9900); color:#ffffff; text-decoration:none; padding:14px 28px; border-radius:30px; font-size:16px; font-weight:bold; display:inline-block;">
+                      Verify My Email
+                    </a>
+                  </div>
+                  <p style="font-size:14px; color:#999999; line-height:1.6;">
+                    If you did not create an account with ERIE WEDDING OFFICIANT, you can safely ignore this email.  
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td style="background:#fdf2e6; text-align:center; padding:20px; border-radius:0 0 12px 12px;">
+                  <p style="margin:0; font-size:13px; color:#777777;">
+                    © ${new Date().getFullYear()} ERIE WEDDING OFFICIANT. All rights reserved.  
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>
+  `,
     });
+
     console.log("Verification email sent to:", email);
 
     res.json({
@@ -180,7 +233,7 @@ exports.forgetPassword = async (req, res) => {
     });
 
     // Create reset URL
-    const resetUrl = `http://localhost:5000/api/users/reset-password/${resetToken}`;
+    const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
 
     // Send reset email
     const transporter = nodemailer.createTransport({
@@ -191,16 +244,62 @@ exports.forgetPassword = async (req, res) => {
       },
     });
 
-    await transporter.sendMail({
-      to: email,
-      subject: "Password Reset Request",
-      html: `
-        <p>You requested a password reset. Click the link below to reset your password:</p>
-        <a href="${resetUrl}">Reset Password</a>
-        <p>This link will expire in 1 hour.</p>
-        <p>If you didn't request this, please ignore this email.</p>
-      `,
-    });
+  await transporter.sendMail({
+    to: email,
+    subject: "Password Reset Request - ERIE WEDDING OFFICIANT",
+    html: `
+  <!DOCTYPE html>
+  <html lang="en" style="margin:0; padding:0;">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Password Reset</title>
+    </head>
+    <body style="margin:0; padding:0; font-family: Arial, sans-serif; background-color:#fff8f0;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#fff8f0; padding:40px 0;">
+        <tr>
+          <td align="center">
+            <table width="600" border="0" cellspacing="0" cellpadding="0" style="background:#ffffff; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,0.08);">
+              <tr>
+                <td style="background:linear-gradient(90deg, #ffb347, #ffcc33); padding:20px; border-radius:12px 12px 0 0; text-align:center;">
+                  <h1 style="margin:0; font-size:28px; color:#ffffff;">ERIE WEDDING OFFICIANT</h1>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:30px; text-align:left; color:#333333;">
+                  <h2 style="color:#ff9900; margin-top:0;">Password Reset Request</h2>
+                  <p style="font-size:16px; line-height:1.6; color:#555555;">
+                    We received a request to reset your password. Click the button below to create a new password:
+                  </p>
+                  <div style="text-align:center; margin:30px 0;">
+                    <a href="${resetUrl}" target="_blank" style="background:linear-gradient(90deg,#ffb347,#ff9900); color:#ffffff; text-decoration:none; padding:14px 28px; border-radius:30px; font-size:16px; font-weight:bold; display:inline-block;">
+                      Reset My Password
+                    </a>
+                  </div>
+                  <p style="font-size:16px; color:#555555; line-height:1.6;">
+                    This link will expire in 1 hour.
+                  </p>
+                  <p style="font-size:14px; color:#999999; line-height:1.6;">
+                    If you did not request a password reset, you can safely ignore this email.
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td style="background:#fdf2e6; text-align:center; padding:20px; border-radius:0 0 12px 12px;">
+                  <p style="margin:0; font-size:13px; color:#777777;">
+                    © ${new Date().getFullYear()} ERIE WEDDING OFFICIANT. All rights reserved.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>
+  `,
+  });
+
 
     console.log("Password reset email sent to:", email);
     res

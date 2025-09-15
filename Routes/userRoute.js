@@ -11,7 +11,8 @@ const {
   resetPassword,
   updateUser,
   getOfficiants,
-  getOfficiantDetails, 
+  getOfficiantDetails,
+  socialLogin, 
 } = require("../Controllers/UserController");
 const auth = require("../Middleware/authMiddleware");
 const upload = require("../Middleware/upload"); 
@@ -26,11 +27,12 @@ router.post("/reset-password/:token", resetPassword);
 router.get("/verify/:token", verifyEmail);
 router.get("/officiants", getOfficiants);
 router.get("/officiants/:id", getOfficiantDetails);
+router.post('/social-login', socialLogin)
 
 // Protected
 router.get("/get-user", auth, getUser);
 router.get("/get-all-users", auth, getAllUsers);
-router.post("/refresh-token", auth, refreshToken);
+router.post("/refresh-token",  refreshToken);
 router.post("/logout", auth, logoutUser);
 router.patch("/update", auth, upload.single("profilePicture"), updateUser);
 

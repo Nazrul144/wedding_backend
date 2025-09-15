@@ -2,16 +2,26 @@ const Notification = require("../Models/NotificationSchema");
 
 // Get user notifications
 exports.getUserNotifications = async (req, res) => {
-    try {
-        const userId = req.params.userId 
-        console.log("Fetching notifications for user:", userId);
-        const notifications = await Notification.find({ userId }).sort({
-            createdAt: -1,
-        });
-        res.status(200).json({ notifications });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+  try {
+    // Get user id from auth token
+    if (!req.user || !req.user.id) {
+      return res.status(400).json({ error: "User not found in token" });
     }
+
+    const tokenUserId = req.user.id;
+    const notifications = await Notification.find({
+      userId: tokenUserId.toString(),
+    }).sort({ createdAt: -1 });
+
+    console.log(
+      `Found ${notifications.length} notifications for user ${tokenUserId}`
+    );
+
+    res.status(200).json({ notifications });
+  } catch (err) {
+    console.error("Error fetching notifications:", err);
+    res.status(500).json({ error: err.message });
+  }
 };
 
 //update for Toggle read status
@@ -48,7 +58,6 @@ exports.createNotificationManual = async (req, res) => {
   }
 };
 
-
 // Exported function to create notifications
 exports.createNotification = async (userId, type, customMessage = null) => {
   try {
@@ -65,5 +74,3 @@ exports.createNotification = async (userId, type, customMessage = null) => {
     console.error("Error creating notification:", err);
   }
 };
-
-

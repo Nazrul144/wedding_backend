@@ -117,7 +117,36 @@ exports.registerUser = async (req, res) => {
 
 // Social Login (Google, Facebook)
 
-exports.socialLogin = async (req, res) => {};
+exports.socialLogin = async (req, res) => {
+  try {
+    const { email, partner_1, partner_2, profilePicture } = req.body;
+    if (!email) {
+      return res.status(400).json({ msg: "Email is required" });
+    }
+    let user = await User.findOne({ email });
+    if (!user) {
+      // Register new user
+      user = new User({
+        email,
+        partner_1,
+        partner_2,
+        profilePicture,
+        isVerified: true, // Social logins are considered verified
+      });
+      await user.save();
+      console.log("New social user registered:", email);
+      const { accessToken, refreshToken } = createTokens(user._id, user.role);
+      res.status(201).json({ accessToken, refreshToken, user });
+    } else {
+      console.log("Social login for existing user:", email);
+      const { accessToken, refreshToken } = createTokens(user._id, user.role);
+      res.status(200).json({ accessToken, refreshToken, user });
+    }
+  } catch (err) {
+    console.error("Error during social login:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
 
 //  Verify Email
 exports.verifyEmail = async (req, res) => {
@@ -244,10 +273,10 @@ exports.forgetPassword = async (req, res) => {
       },
     });
 
-  await transporter.sendMail({
-    to: email,
-    subject: "Password Reset Request - ERIE WEDDING OFFICIANT",
-    html: `
+    await transporter.sendMail({
+      to: email,
+      subject: "Password Reset Request - ERIE WEDDING OFFICIANT",
+      html: `
   <!DOCTYPE html>
   <html lang="en" style="margin:0; padding:0;">
     <head>
@@ -298,8 +327,7 @@ exports.forgetPassword = async (req, res) => {
     </body>
   </html>
   `,
-  });
-
+    });
 
     console.log("Password reset email sent to:", email);
     res
@@ -404,7 +432,7 @@ exports.getOfficiantDetails = async (req, res) => {
   try {
     const { id } = req.params;
     console.log("Fetching officiant with ID:", id);
-    
+
     const officiant = await User.findById(id);
     if (!officiant) {
       return res.status(404).json({ msg: "Officiant not found" });

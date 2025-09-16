@@ -26,6 +26,7 @@ const reviewRoute = require("./Routes/reviewRoute");
 const notificationRoute = require("./Routes/notificationRoute");
 const scheduleRoute = require("./Routes/scheduleRoute");
 const marketingOthersRoute = require("./Routes/marketing_othersRoute");
+const billRoute = require("./Routes/BillRoute");
 
 
 // ==========User routes=================
@@ -42,6 +43,8 @@ app.use("/api/notifications", notificationRoute);
 app.use("/api/schedule", scheduleRoute);
 // ==========Marketing others routes=====
 app.use("/api/marketing", marketingOthersRoute);
+// ==========Bill routes=================
+app.use("/api/bills", billRoute);
 
 // Serve frontend/public folder
 app.use(express.static(path.join(__dirname, "public")));

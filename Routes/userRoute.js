@@ -13,7 +13,8 @@ const {
   getOfficiants,
   getOfficiantDetails,
   socialLogin,
-  changePassword, 
+  changePassword,
+  deleteUser, 
 } = require("../Controllers/UserController");
 const auth = require("../Middleware/authMiddleware");
 const upload = require("../Middleware/upload"); 
@@ -37,6 +38,6 @@ router.post("/refresh-token",  refreshToken);
 router.post("/logout", auth, logoutUser);
 router.patch("/update", auth, upload.single("profilePicture"), updateUser);
 router.patch("/change-password", auth, changePassword);
-router.post("/delete-account", auth, ge auth, upload.single("profilePicture"), async (req, res) => {
+router.delete("/delete-account", auth, deleteUser);
 
 module.exports = router;

@@ -20,6 +20,6 @@ router.get("/by-role/:id/:role", auth, getEventsByRole);
 
 // get all events
 router.get("/all",auth,deleteUser)
-
+ 
 
 module.exports = router;

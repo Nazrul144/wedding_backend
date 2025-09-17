@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
+const { all } = require("../Routes/userRoute");
 
 const userSchema = new mongoose.Schema({
   partner_1: { type: String, required: false },
@@ -24,6 +25,7 @@ const userSchema = new mongoose.Schema({
   }],
   bookingMoney: { type: Number, default: 0 },
   bio: String,
+  allowDownoad: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },

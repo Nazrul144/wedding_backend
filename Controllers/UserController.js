@@ -367,6 +367,38 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
+// change password (protected route)
+exports.changePassword = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { oldPassword, newPassword } = req.body;
+    console.log("Change password request for user ID:", userId);
+    console.log("Old Password:", oldPassword ? "Provided" : "Not Provided");
+    console.log("New Password:", newPassword ? "Provided" : "Not Provided");
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ msg: "All fields are required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    const isMatch = await user.comparePassword(oldPassword);
+    if (!isMatch) {
+      return res.status(400).json({ msg: "Old password is incorrect" });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ msg: "Password changed successfully" });
+  } catch (err) {
+    console.error("Error changing password:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // update user
 exports.updateUser = async (req, res) => {
   try {
@@ -380,6 +412,7 @@ exports.updateUser = async (req, res) => {
       "bookingMoney",
       "location",
       "weddingDate",
+      "allowDownoad"
     ];
 
     allowedFields.forEach((field) => {
@@ -397,6 +430,10 @@ exports.updateUser = async (req, res) => {
       const baseUrl = `${req.protocol}://${req.get("host")}`;
       updateFields.profilePicture = `${baseUrl}/uploads/${req.file.filename}`;
     }
+
+    // Log the fields being updated
+    console.log("Updating user fields:", updateFields);
+    console.log("Raw request body:", req.body);
 
     updateFields.updatedAt = Date.now();
 
@@ -444,7 +481,23 @@ exports.getOfficiantDetails = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+// delete user account 
+exports.deleteUser = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user =
+      await User.findByIdAndDelete(userId).select("-password -refreshToken");
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
 
+    res.status(200).json({ msg: "User deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting user:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+  
 //  Protected Example
 exports.getDashboard = async (req, res) => {
   res.json({ msg: "Welcome to dashboard", user: req.user });

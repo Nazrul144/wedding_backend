@@ -12,7 +12,8 @@ const {
   updateUser,
   getOfficiants,
   getOfficiantDetails,
-  socialLogin, 
+  socialLogin,
+  changePassword, 
 } = require("../Controllers/UserController");
 const auth = require("../Middleware/authMiddleware");
 const upload = require("../Middleware/upload"); 
@@ -28,12 +29,14 @@ router.get("/verify/:token", verifyEmail);
 router.get("/officiants", getOfficiants);
 router.get("/officiants/:id", getOfficiantDetails);
 router.post('/social-login', socialLogin)
-
+ 
 // Protected
 router.get("/get-user", auth, getUser);
 router.get("/get-all-users", auth, getAllUsers);
 router.post("/refresh-token",  refreshToken);
 router.post("/logout", auth, logoutUser);
 router.patch("/update", auth, upload.single("profilePicture"), updateUser);
+router.patch("/change-password", auth, changePassword);
+router.post("/delete-account", auth, ge auth, upload.single("profilePicture"), async (req, res) => {
 
 module.exports = router;

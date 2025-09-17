@@ -28,7 +28,6 @@ const scheduleRoute = require("./Routes/scheduleRoute");
 const marketingOthersRoute = require("./Routes/marketing_othersRoute");
 const billRoute = require("./Routes/BillRoute");
 
-
 // ==========User routes=================
 app.use("/api/users", userRoutes);
 // ==========Note routes=================

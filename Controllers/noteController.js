@@ -46,7 +46,7 @@ exports.deleteNote = async (req, res) => {
 // get notes by user ID
 exports.getNotesByUserId = async (req, res) => {
   const userId = req.params.userId;
-  console.log("Fetching notes for user ID:", userId);
+  // console.log("Fetching notes for user ID:", userId);
   try {
     const notes = await note
       .find({ to_userId: userId })

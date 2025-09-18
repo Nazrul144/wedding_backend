@@ -13,9 +13,9 @@ exports.getUserNotifications = async (req, res) => {
       userId: tokenUserId.toString(),
     }).sort({ createdAt: -1 });
 
-    console.log(
-      `Found ${notifications.length} notifications for user ${tokenUserId}`
-    );
+    // console.log(
+    //   `Found ${notifications.length} notifications for user ${tokenUserId}`
+    // );
 
     res.status(200).json({ notifications });
   } catch (err) {

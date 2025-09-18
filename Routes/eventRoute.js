@@ -2,7 +2,7 @@ const express = require("express");
 
 const auth = require("../Middleware/authMiddleware");
 const { createEvent, updateEvent, deleteEvent, getEventsByRole, getAllEvents } = require("../Controllers/eventController");
-const { deleteUser } = require("../Controllers/UserController");
+// const { deleteUser } = require("../Controllers/UserController");
 
 const router = express.Router();
 
@@ -19,7 +19,7 @@ router.delete("/delete/:id", auth, deleteEvent);
 router.get("/by-role/:id/:role", auth, getEventsByRole);
 
 // get all events
-router.get("/all",auth,deleteUser)
+router.get("/all",auth,getAllEvents)
  
 
 module.exports = router;

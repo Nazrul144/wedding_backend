@@ -18,6 +18,7 @@ const EventSchema = new mongoose.Schema({
     officiantId: { type: String,  required: false },
     officiantName: { type: String,  required: false },
     rehearsalDate: { type: Date, required: false },
+    
     location: { type: String, required: false },
     eventTime: { type: Date, required: false },
     status: { type: String, enum: ["planned", "submitted", "approved", "completed", "canceled"], default: "planned" },

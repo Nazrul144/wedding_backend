@@ -6,8 +6,9 @@ const nodemailer = require("nodemailer");
 const EMAIL_SECRET = process.env.EMAIL_SECRET;
 
 const createTokens = (userId, role) => {
+  console.log("Creating tokens for userId:", userId, "with role:", role);
   const accessToken = jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
-    expiresIn: "45m",
+    expiresIn: "60m",
   });
   const refreshToken = jwt.sign(
     { id: userId, role },
@@ -123,25 +124,50 @@ exports.socialLogin = async (req, res) => {
     if (!email) {
       return res.status(400).json({ msg: "Email is required" });
     }
+
     let user = await User.findOne({ email });
     if (!user) {
+      // Generate a secure random password for social login users
+      const randomPassword = require("crypto").randomBytes(16).toString("hex");
+
       // Register new user
       user = new User({
         email,
         partner_1,
         partner_2,
         profilePicture,
+        password: randomPassword,
         isVerified: true, // Social logins are considered verified
       });
+
       await user.save();
       console.log("New social user registered:", email);
-      const { accessToken, refreshToken } = createTokens(user._id, user.role);
-      res.status(201).json({ accessToken, refreshToken, user });
-    } else {
-      console.log("Social login for existing user:", email);
-      const { accessToken, refreshToken } = createTokens(user._id, user.role);
-      res.status(200).json({ accessToken, refreshToken, user });
     }
+
+    // Generate tokens - for both new and existing users
+    const { accessToken, refreshToken } = createTokens(user._id, user.role);
+
+    // Save refreshToken in DB - THIS WAS MISSING
+    user.refreshToken = refreshToken;
+    await user.save();
+
+    console.log(
+      `Social login for ${user.isNew ? "new" : "existing"} user:`,
+      email
+    );
+
+    // Return the same response format as regular login
+    res.status(user.isNew ? 201 : 200).json({
+      accessToken,
+      refreshToken,
+      user: user.toObject({
+        transform: (doc, ret) => {
+          delete ret.password;
+          delete ret.refreshToken;
+          return ret;
+        },
+      }),
+    });
   } catch (err) {
     console.error("Error during social login:", err);
     res.status(500).json({ error: err.message });
@@ -188,25 +214,35 @@ exports.refreshToken = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+    // console.log("Decoded refresh token:", decoded);
     const user = await User.findById(decoded.id);
-    if (!user || user.refreshToken !== token)
+    console.log("User found for refresh token:", user ? user.email : "None");
+    if (!user || user.refreshToken !== token) {
+      console.log(
+        "Invalid refresh token attempt",
+        user ? user.email : "No user",
+        token,
+        user ? user.refreshToken : "No refresh token"
+      );
       return res.status(403).json({ msg: "Invalid refresh token" });
+    }
 
     // Generate new tokens
     const { accessToken, refreshToken } = createTokens(user._id, user.role);
 
     user.refreshToken = refreshToken; // update refresh token
     await user.save();
-
-    res.json({ accessToken, refreshToken });
+    console.log("Refresh token successful for user:", user.email);
+    res.json({ accessToken, refreshToken, user });
   } catch (err) {
+    console.error("Error in refresh token:", err);
     res.status(403).json({ msg: "Invalid or expired token" });
   }
 };
 
 // logout function
 exports.logoutUser = async (req, res) => {
-  console.log("Logging out user:", req.body);
+  // console.log("Logging out user:", req.body);
   const { token } = req.body;
   if (!token) return res.sendStatus(204);
   const user = await User.findOne({ refreshToken: token });
@@ -412,7 +448,7 @@ exports.updateUser = async (req, res) => {
       "bookingMoney",
       "location",
       "weddingDate",
-      "allowDownoad"
+      "allowDownoad",
     ];
 
     allowedFields.forEach((field) => {
@@ -481,12 +517,13 @@ exports.getOfficiantDetails = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-// delete user account 
+// delete user account
 exports.deleteUser = async (req, res) => {
   try {
     const userId = req.user.id;
-    const user =
-      await User.findByIdAndDelete(userId).select("-password -refreshToken");
+    const user = await User.findByIdAndDelete(userId).select(
+      "-password -refreshToken"
+    );
     if (!user) {
       return res.status(404).json({ msg: "User not found" });
     }
@@ -497,7 +534,7 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-  
+
 //  Protected Example
 exports.getDashboard = async (req, res) => {
   res.json({ msg: "Welcome to dashboard", user: req.user });

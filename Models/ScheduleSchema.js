@@ -1,16 +1,16 @@
 const mongoose = require("mongoose");
 
 const ScheduleSchema = new mongoose.Schema({
-    fromUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    fromUserId: { type: String, required: true },
     fromUserName: { type: String, required: true },
-    eventId: { type: mongoose.Schema.Types.ObjectId,required: true },
+    eventId: { type: String, required: true },
     eventName: { type: String, required: true },
     scheduleDate: { type: Date, required: false },
     scheduleDateTime: { type: String, required: false },
     scheduleStatus : { type: Boolean, required: true },
     officiantName: { type: String, required: true },
     officiantImage: { type: String, required: false },
-    officiantId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    officiantId: { type: String, required: true },
     officiantWorkStatus: { type: String, required: true },
     message: { type: String, required: false },
     packageName: { type: String, required: true },

@@ -5,9 +5,11 @@ const Schedule = require("../Models/ScheduleSchema");
 exports.createSchedule = async (req, res) => {
   try {
     const schedule = new Schedule(req.body);
+    console.log("Creating schedule with data:", req.body);
     await schedule.save();
     res.status(201).json(schedule);
   } catch (error) {
+    console.error("Error creating schedule:", error);
     res.status(400).json({ error: error.message });
   }
 };
@@ -16,9 +18,11 @@ exports.createSchedule = async (req, res) => {
 exports.getSchedulesByUser = async (req, res) => {
   try {
     const userId = req.params.userId;
+    console.log("Fetching schedules for userId:", userId);
     const schedules = await Schedule.find({
-      $or: [{ fromUiserId: userId }, { officiantId: userId }],
+      $or: [{ fromUserId: userId }, { officiantId: userId }],
     }).sort({ createdAt: -1 });
+    console.log(`Found ${schedules.length} schedules for userId:`, userId);
     res.status(200).json(schedules);
   } catch (error) {
     res.status(500).json({ error: error.message });

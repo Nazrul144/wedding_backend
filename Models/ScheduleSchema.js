@@ -11,10 +11,10 @@ const ScheduleSchema = new mongoose.Schema({
     officiantName: { type: String, required: true },
     officiantImage: { type: String, required: false },
     officiantId: { type: String, required: true },
-    officiantWorkStatus: { type: String, required: true },
+    // officiantWorkStatus: { type: String, required: true },
     message: { type: String, required: false },
     packageName: { type: String, required: true },
-    approvedStatus: { type: String, required: false },
+    approvedStatus: { type: Boolean, required: false },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
 });

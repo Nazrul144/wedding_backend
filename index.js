@@ -44,6 +44,10 @@ app.use("/api/schedule", scheduleRoute);
 app.use("/api/marketing", marketingOthersRoute);
 // ==========Bill routes=================
 app.use("/api/bills", billRoute);
+// =============PaymentFunctionality================
+
+
+
 
 // Serve frontend/public folder
 app.use(express.static(path.join(__dirname, "public")));

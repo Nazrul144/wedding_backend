@@ -25,6 +25,8 @@ function setupSocket(server) {
 
     // Handle user coming online
     socket.on("userOnline", ({ userId, userName }) => {
+      console.log(`📡 User ${userName} (${userId}) came online`);
+
       onlineUsers.set(userId, {
         userName,
         socketId: socket.id,
@@ -37,6 +39,12 @@ function setupSocket(server) {
         return Array.from(roomUserList).some((u) => u.userId === userId);
       });
 
+      console.log(
+        `📡 Broadcasting online status for ${userName} to rooms: ${userRooms.join(
+          ", "
+        )}`
+      );
+
       userRooms.forEach((roomId) => {
         socket.to(roomId).emit("userStatusChanged", {
           userId,
@@ -45,10 +53,21 @@ function setupSocket(server) {
           lastSeen: new Date(),
         });
       });
+
+      // Also broadcast to any potential private rooms (for cases where user might not be in room yet)
+      // This is especially important for the initial online status broadcast
+      io.emit("userStatusChanged", {
+        userId,
+        userName,
+        isOnline: true,
+        lastSeen: new Date(),
+      });
     });
 
     // Handle user going offline
     socket.on("userOffline", ({ userId, userName }) => {
+      console.log(`📡 User ${userName} (${userId}) went offline`);
+
       if (onlineUsers.has(userId)) {
         onlineUsers.delete(userId);
 
@@ -58,6 +77,12 @@ function setupSocket(server) {
           return Array.from(roomUserList).some((u) => u.userId === userId);
         });
 
+        console.log(
+          `📡 Broadcasting offline status for ${userName} to rooms: ${userRooms.join(
+            ", "
+          )}`
+        );
+
         userRooms.forEach((roomId) => {
           socket.to(roomId).emit("userStatusChanged", {
             userId,
@@ -66,7 +91,22 @@ function setupSocket(server) {
             lastSeen: new Date(),
           });
         });
+
+        // Also broadcast globally for immediate status update
+        io.emit("userStatusChanged", {
+          userId,
+          userName,
+          isOnline: false,
+          lastSeen: new Date(),
+        });
       }
+    });
+
+    // Handle request for online users list
+    socket.on("getOnlineUsers", () => {
+      const onlineUserIds = Array.from(onlineUsers.keys());
+      console.log(`📡 Sending online users list to client:`, onlineUserIds);
+      socket.emit("onlineUsersList", { onlineUsers: onlineUserIds });
     });
 
     // Handle joining a chat room
@@ -159,6 +199,16 @@ function setupSocket(server) {
         message: `${userName} joined the chat`,
       });
 
+      // If user is now online, broadcast their status to the room
+      if (onlineUsers.has(userId)) {
+        socket.to(roomId).emit("userStatusChanged", {
+          userId,
+          userName,
+          isOnline: true,
+          lastSeen: new Date(),
+        });
+      }
+
       // Send current online users in room
       const currentUsers = roomUsers.get(roomId);
       const userList = currentUsers
@@ -169,6 +219,20 @@ function setupSocket(server) {
         : [];
 
       socket.emit("roomUsers", { roomId, users: userList });
+
+      // Send online status of all users in this room to the newly joined user
+      const roomUserIds = Array.from(currentUsers || []).map((u) => u.userId);
+      roomUserIds.forEach((rUserId) => {
+        if (rUserId !== userId && onlineUsers.has(rUserId)) {
+          const onlineUser = onlineUsers.get(rUserId);
+          socket.emit("userStatusChanged", {
+            userId: rUserId,
+            userName: onlineUser.userName,
+            isOnline: true,
+            lastSeen: onlineUser.lastSeen,
+          });
+        }
+      });
     });
 
     // Handle sending messages
@@ -201,10 +265,19 @@ function setupSocket(server) {
 
         await chatMessage.save();
 
-        // Broadcast to all clients in the room (including sender for confirmation)
-        io.to(roomId).emit("receiveMessage", {
+        // Broadcast to all OTHER clients in the room (excluding sender)
+        socket.to(roomId).emit("receiveMessage", {
           ...messageData,
           _id: chatMessage._id,
+          messageId: chatMessage.messageId,
+          createdAt: chatMessage.createdAt,
+        });
+
+        // Send confirmation back to sender only
+        socket.emit("messageConfirmed", {
+          ...messageData,
+          _id: chatMessage._id,
+          messageId: chatMessage.messageId,
           createdAt: chatMessage.createdAt,
         });
 
@@ -390,6 +463,105 @@ function setupSocket(server) {
       }
     );
 
+    // Handle booking proposal sending
+    socket.on(
+      "send_booking_proposal",
+      async ({ roomId, bookingData, message }) => {
+        console.log("📅 Booking proposal received:", {
+          roomId,
+          bookingData,
+          message,
+        });
+
+        try {
+          // Create a new chat message with booking proposal type
+          const messageData = {
+            id: Date.now() + Math.random().toString(36).substr(2, 9),
+            content: message,
+            sender: bookingData.officiantId,
+            senderName: bookingData.officiantName,
+            type: "booking_proposal",
+            timestamp: new Date().toISOString(),
+            roomId,
+            bookingData: {
+              ...bookingData,
+              status: "pending",
+            },
+          };
+
+          // Save to database
+          const newMessage = new ChatMessage({
+            content: message,
+            sender: bookingData.officiantId,
+            senderName: bookingData.officiantName,
+            type: "booking_proposal",
+            roomId,
+            bookingData: {
+              ...bookingData,
+              status: "pending",
+            },
+          });
+
+          await newMessage.save();
+          messageData.id = newMessage._id;
+
+          // Emit to room participants
+          io.to(roomId).emit("booking_proposal_received", messageData);
+
+          console.log("✅ Booking proposal sent successfully");
+        } catch (error) {
+          console.error("❌ Error sending booking proposal:", error);
+          socket.emit("error", { message: "Failed to send booking proposal" });
+        }
+      }
+    );
+
+    // Handle booking response (accept/decline)
+    socket.on(
+      "booking_response",
+      async ({ roomId, messageId, response, userId }) => {
+        console.log("📋 Booking response received:", {
+          roomId,
+          messageId,
+          response,
+          userId,
+        });
+
+        try {
+          // Update the message in database
+          const message = await ChatMessage.findByIdAndUpdate(
+            messageId,
+            {
+              $set: {
+                "bookingData.status": response,
+                "bookingData.respondedBy": userId,
+                "bookingData.respondedAt": new Date(),
+              },
+            },
+            { new: true }
+          );
+
+          if (message) {
+            // Emit response to room participants
+            io.to(roomId).emit("booking_response_received", {
+              messageId,
+              response,
+              userId,
+            });
+
+            console.log(`✅ Booking ${response} processed successfully`);
+          } else {
+            console.error("❌ Message not found for booking response");
+          }
+        } catch (error) {
+          console.error("❌ Error processing booking response:", error);
+          socket.emit("error", {
+            message: "Failed to process booking response",
+          });
+        }
+      }
+    );
+
     // Handle disconnect
     socket.on("disconnect", () => {
       console.log("❌ Client disconnected:", socket.id);
@@ -397,6 +569,26 @@ function setupSocket(server) {
       const user = activeUsers.get(socket.id);
       if (user) {
         const { roomId, userId, userName } = user;
+
+        // Remove from online users
+        if (onlineUsers.has(userId)) {
+          onlineUsers.delete(userId);
+
+          // Broadcast offline status to all rooms this user was part of
+          const userRooms = Array.from(roomUsers.keys()).filter((rId) => {
+            const roomUserList = roomUsers.get(rId);
+            return Array.from(roomUserList).some((u) => u.userId === userId);
+          });
+
+          userRooms.forEach((rId) => {
+            socket.to(rId).emit("userStatusChanged", {
+              userId,
+              userName,
+              isOnline: false,
+              lastSeen: new Date(),
+            });
+          });
+        }
 
         // Remove from room users
         if (roomUsers.has(roomId)) {

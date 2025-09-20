@@ -96,6 +96,23 @@ const chatMessageSchema = new mongoose.Schema(
       default: false,
     },
     deletedAt: Date,
+    // Booking proposal data
+    bookingData: {
+      eventId: String,
+      eventName: String,
+      price: Number,
+      officiantId: String,
+      officiantName: String,
+      clientId: String,
+      clientName: String,
+      status: {
+        type: String,
+        enum: ["pending", "accept", "decline"],
+        default: "pending",
+      },
+      respondedBy: String,
+      respondedAt: Date,
+    },
     // Reply to another message
     replyTo: {
       messageId: String,

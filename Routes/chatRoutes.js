@@ -82,8 +82,10 @@ router.post("/upload-chat-file", upload.single("file"), async (req, res) => {
       fileType = "document";
     }
 
-    // Generate file URL (adjust based on your server setup)
-    const fileUrl = `/uploads/chat/${req.file.filename}`;
+    // Generate file URL with correct server base URL
+    const baseUrl =
+      process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+    const fileUrl = `${baseUrl}/uploads/chat/${req.file.filename}`;
 
     // Create message in database
     const chatMessage = new ChatMessage({
@@ -177,6 +179,9 @@ router.post(
           fileType = "document";
         }
 
+        const baseUrl =
+          process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+
         return {
           id: Date.now() + Math.random(),
           roomId,
@@ -185,7 +190,7 @@ router.post(
           type: fileType,
           content: file.filename,
           originalName: file.originalname,
-          fileUrl: `/uploads/chat/${file.filename}`,
+          fileUrl: `${baseUrl}/uploads/chat/${file.filename}`,
           fileSize: file.size,
           mimeType: file.mimetype,
           uploadedAt: new Date().toISOString(),
@@ -732,6 +737,86 @@ router.get("/officiants", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch officiants",
+      error: error.message,
+    });
+  }
+});
+
+// Get users who have messaged an officiant
+router.get("/users-for-officiant/:officiantId", async (req, res) => {
+  try {
+    console.log("Fetching users for officiant chat", req.params);
+    const { officiantId } = req.params;
+    const User = require("../Models/UserCredential");
+
+    // Find all private rooms involving this officiant
+    const roomPattern = new RegExp(
+      `private_.*${officiantId}.*|private_${officiantId}_.*`
+    );
+
+    // Get unique user IDs from chat messages in rooms involving this officiant
+    const userMessages = await ChatMessage.aggregate([
+      {
+        $match: {
+          roomId: { $regex: roomPattern },
+          sender: { $ne: officiantId }, // Exclude messages from the officiant themselves
+        },
+      },
+      {
+        $group: {
+          _id: "$sender",
+          lastMessage: { $last: "$createdAt" },
+          senderName: { $last: "$senderName" },
+        },
+      },
+      {
+        $sort: { lastMessage: -1 },
+      },
+    ]);
+
+    // Get user details for each unique sender
+    const userIds = userMessages.map((msg) => msg._id);
+    const users = await User.find(
+      {
+        _id: { $in: userIds },
+        role: { $ne: "officiant" }, // Ensure they are not officiants
+      },
+      {
+        _id: 1,
+        partner_1: 1,
+        partner_2: 1,
+        email: 1,
+        profilePicture: 1,
+        role: 1,
+      }
+    );
+
+    // Combine user data with chat info
+    const usersWithChatInfo = users
+      .map((user) => {
+        const chatInfo = userMessages.find(
+          (msg) => msg._id.toString() === user._id.toString()
+        );
+        return {
+          ...user.toObject(),
+          name: user.partner_1 || user.partner_2 || "User",
+          lastMessageTime: chatInfo?.lastMessage,
+          online: false, // Will be updated by socket
+        };
+      })
+      .sort(
+        (a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime)
+      );
+
+    res.json({
+      success: true,
+      data: usersWithChatInfo,
+    });
+  } catch (error) {
+    console.error("Error fetching users for officiant:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch users for officiant",
       error: error.message,
     });
   }

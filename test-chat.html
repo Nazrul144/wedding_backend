@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat Test - Wedding Backend</title>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .status {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+        font-weight: bold;
+      }
+      .connected {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .disconnected {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .chat-box {
+        height: 300px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 10px;
+        overflow-y: auto;
+        background-color: #fafafa;
+        margin: 10px 0;
+      }
+      .message {
+        margin: 5px 0;
+        padding: 8px;
+        border-radius: 5px;
+        background-color: #e3f2fd;
+      }
+      .message.sent {
+        background-color: #c8e6c9;
+        text-align: right;
+      }
+      .message.system {
+        background-color: #fff3e0;
+        font-style: italic;
+        text-align: center;
+      }
+      .input-group {
+        display: flex;
+        gap: 10px;
+        margin: 10px 0;
+      }
+      input,
+      button {
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      input[type="text"] {
+        flex: 1;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      .typing-indicator {
+        font-style: italic;
+        color: #666;
+        padding: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎉 Wedding Backend - Real-time Chat Test</h1>
+
+      <div id="connectionStatus" class="status disconnected">
+        ❌ Disconnected from server
+      </div>
+
+      <div class="test-section">
+        <h3>Connection Test</h3>
+        <p>
+          This will test if Socket.IO connection is working with your backend
+          server.
+        </p>
+        <button onclick="connectToServer()">Connect to Server</button>
+        <button onclick="disconnectFromServer()">Disconnect</button>
+      </div>
+
+      <div class="test-section">
+        <h3>Room Management</h3>
+        <div class="input-group">
+          <input
+            type="text"
+            id="roomId"
+            placeholder="Room ID (e.g., room-123)"
+            value="test-room-1"
+          />
+          <input
+            type="text"
+            id="userId"
+            placeholder="User ID"
+            value="user-123"
+          />
+          <input
+            type="text"
+            id="userName"
+            placeholder="User Name"
+            value="Test User"
+          />
+          <button onclick="joinRoom()">Join Room</button>
+          <button onclick="leaveRoom()">Leave Room</button>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h3>Chat Messages</h3>
+        <div id="chatBox" class="chat-box"></div>
+        <div id="typingIndicator" class="typing-indicator"></div>
+        <div class="input-group">
+          <input
+            type="text"
+            id="messageInput"
+            placeholder="Type a message..."
+            onkeypress="handleKeyPress(event)"
+          />
+          <button onclick="sendMessage()">Send</button>
+          <button onclick="startTyping()">Start Typing</button>
+          <button onclick="stopTyping()">Stop Typing</button>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h3>File Upload Test</h3>
+        <input
+          type="file"
+          id="fileInput"
+          accept="image/*,.pdf,.doc,.docx,.txt"
+        />
+        <button onclick="uploadFile()">Upload File</button>
+        <div id="uploadStatus"></div>
+      </div>
+
+      <div class="test-section">
+        <h3>Server Health Check</h3>
+        <button onclick="checkServerHealth()">Check API Health</button>
+        <div id="healthStatus"></div>
+      </div>
+
+      <div class="test-section">
+        <h3>Test Results</h3>
+        <ul id="testResults"></ul>
+      </div>
+    </div>
+
+    <script>
+      let socket = null;
+      let currentRoom = null;
+      let currentUser = null;
+
+      function addTestResult(message, success = true) {
+        const resultsList = document.getElementById("testResults");
+        const li = document.createElement("li");
+        li.innerHTML = `${success ? "✅" : "❌"} ${message}`;
+        li.style.color = success ? "green" : "red";
+        resultsList.appendChild(li);
+      }
+
+      function updateConnectionStatus(connected) {
+        const statusDiv = document.getElementById("connectionStatus");
+        if (connected) {
+          statusDiv.className = "status connected";
+          statusDiv.innerHTML = "✅ Connected to server";
+          addTestResult("Socket.IO connection established");
+        } else {
+          statusDiv.className = "status disconnected";
+          statusDiv.innerHTML = "❌ Disconnected from server";
+          addTestResult("Socket.IO connection lost", false);
+        }
+      }
+
+      function addMessage(content, type = "received") {
+        const chatBox = document.getElementById("chatBox");
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `message ${type}`;
+        messageDiv.innerHTML = content;
+        chatBox.appendChild(messageDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+
+      function connectToServer() {
+        if (socket) {
+          socket.disconnect();
+        }
+
+        socket = io("http://localhost:5000", {
+          cors: {
+            origin: "*",
+            methods: ["GET", "POST"],
+          },
+        });
+
+        socket.on("connect", () => {
+          updateConnectionStatus(true);
+          addMessage("Connected to server", "system");
+        });
+
+        socket.on("disconnect", () => {
+          updateConnectionStatus(false);
+          addMessage("Disconnected from server", "system");
+        });
+
+        socket.on("userJoined", (data) => {
+          addMessage(`${data.userName} joined the chat`, "system");
+          addTestResult(`User join notification received: ${data.userName}`);
+        });
+
+        socket.on("userLeft", (data) => {
+          addMessage(`${data.userName} left the chat`, "system");
+          addTestResult(`User leave notification received: ${data.userName}`);
+        });
+
+        socket.on("receiveMessage", (data) => {
+          const content =
+            data.type === "file"
+              ? `📎 File: ${data.originalName}`
+              : data.content;
+          addMessage(
+            `<strong>${data.senderName}:</strong> ${content}`,
+            "received"
+          );
+          addTestResult("Message received successfully");
+        });
+
+        socket.on("userTyping", (data) => {
+          const indicator = document.getElementById("typingIndicator");
+          if (data.isTyping) {
+            indicator.textContent = `${data.userName} is typing...`;
+            addTestResult(`Typing indicator received from ${data.userName}`);
+          } else {
+            indicator.textContent = "";
+          }
+        });
+
+        socket.on("messageReaction", (data) => {
+          addMessage(
+            `${data.userName} ${
+              data.action === "add" ? "added" : "removed"
+            } reaction ${data.emoji}`,
+            "system"
+          );
+          addTestResult("Message reaction received");
+        });
+
+        socket.on("messagesRead", (data) => {
+          addMessage(`${data.userName} read messages`, "system");
+          addTestResult("Read receipt received");
+        });
+
+        socket.on("roomUsers", (data) => {
+          addMessage(
+            `Users in room: ${data.users.map((u) => u.userName).join(", ")}`,
+            "system"
+          );
+          addTestResult(
+            `Room users list received (${data.users.length} users)`
+          );
+        });
+
+        socket.on("error", (error) => {
+          console.error("Socket error:", error);
+          addTestResult(`Socket error: ${error}`, false);
+        });
+      }
+
+      function disconnectFromServer() {
+        if (socket) {
+          socket.disconnect();
+          socket = null;
+        }
+      }
+
+      function joinRoom() {
+        if (!socket) {
+          alert("Please connect to server first");
+          return;
+        }
+
+        const roomId = document.getElementById("roomId").value;
+        const userId = document.getElementById("userId").value;
+        const userName = document.getElementById("userName").value;
+
+        if (!roomId || !userId || !userName) {
+          alert("Please fill in all fields");
+          return;
+        }
+
+        currentRoom = roomId;
+        currentUser = { userId, userName };
+
+        socket.emit("joinRoom", { roomId, userId, userName });
+        addMessage(`Joining room: ${roomId}`, "system");
+        addTestResult(`Attempted to join room: ${roomId}`);
+      }
+
+      function leaveRoom() {
+        if (!socket || !currentRoom || !currentUser) {
+          alert("Not in a room");
+          return;
+        }
+
+        socket.emit("leaveRoom", {
+          roomId: currentRoom,
+          userId: currentUser.userId,
+          userName: currentUser.userName,
+        });
+
+        addMessage(`Leaving room: ${currentRoom}`, "system");
+        addTestResult(`Left room: ${currentRoom}`);
+        currentRoom = null;
+        currentUser = null;
+      }
+
+      function sendMessage() {
+        if (!socket || !currentRoom || !currentUser) {
+          alert("Please join a room first");
+          return;
+        }
+
+        const messageInput = document.getElementById("messageInput");
+        const content = messageInput.value.trim();
+
+        if (!content) {
+          alert("Please enter a message");
+          return;
+        }
+
+        const messageData = {
+          roomId: currentRoom,
+          sender: currentUser.userId,
+          senderName: currentUser.userName,
+          type: "text",
+          content: content,
+          timestamp: new Date().toISOString(),
+        };
+
+        socket.emit("sendMessage", messageData);
+        addMessage(`<strong>You:</strong> ${content}`, "sent");
+        messageInput.value = "";
+        addTestResult("Message sent");
+      }
+
+      function handleKeyPress(event) {
+        if (event.key === "Enter") {
+          sendMessage();
+        }
+      }
+
+      function startTyping() {
+        if (!socket || !currentRoom || !currentUser) {
+          alert("Please join a room first");
+          return;
+        }
+
+        socket.emit("typing", {
+          roomId: currentRoom,
+          userId: currentUser.userId,
+          userName: currentUser.userName,
+          isTyping: true,
+        });
+        addTestResult("Typing indicator sent (start)");
+      }
+
+      function stopTyping() {
+        if (!socket || !currentRoom || !currentUser) {
+          return;
+        }
+
+        socket.emit("typing", {
+          roomId: currentRoom,
+          userId: currentUser.userId,
+          userName: currentUser.userName,
+          isTyping: false,
+        });
+        addTestResult("Typing indicator sent (stop)");
+      }
+
+      async function uploadFile() {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+
+        if (!file) {
+          alert("Please select a file");
+          return;
+        }
+
+        if (!currentRoom || !currentUser) {
+          alert("Please join a room first");
+          return;
+        }
+
+        const uploadStatus = document.getElementById("uploadStatus");
+        uploadStatus.textContent = "Uploading...";
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("roomId", currentRoom);
+        formData.append("sender", currentUser.userId);
+        formData.append("senderName", currentUser.userName);
+        formData.append("type", "file");
+
+        try {
+          const response = await fetch(
+            "http://localhost:5000/api/chat/upload-chat-file",
+            {
+              method: "POST",
+              body: formData,
+            }
+          );
+
+          const result = await response.json();
+
+          if (result.success) {
+            uploadStatus.textContent = "File uploaded successfully!";
+            uploadStatus.style.color = "green";
+            addTestResult("File upload successful");
+
+            // Share file via socket
+            if (socket) {
+              socket.emit("shareFile", result.fileData);
+            }
+          } else {
+            uploadStatus.textContent = `Upload failed: ${result.message}`;
+            uploadStatus.style.color = "red";
+            addTestResult(`File upload failed: ${result.message}`, false);
+          }
+        } catch (error) {
+          uploadStatus.textContent = `Upload error: ${error.message}`;
+          uploadStatus.style.color = "red";
+          addTestResult(`File upload error: ${error.message}`, false);
+        }
+      }
+
+      async function checkServerHealth() {
+        const healthStatus = document.getElementById("healthStatus");
+        healthStatus.textContent = "Checking...";
+
+        try {
+          const response = await fetch("http://localhost:5000/api/health");
+          const result = await response.json();
+
+          if (result.success) {
+            healthStatus.innerHTML = `
+                        <div style="color: green;">
+                            ✅ Server is healthy<br>
+                            Chat: ${
+                              result.features.chat ? "Enabled" : "Disabled"
+                            }<br>
+                            File Upload: ${
+                              result.features.fileUpload
+                                ? "Enabled"
+                                : "Disabled"
+                            }<br>
+                            Real-time: ${
+                              result.features.realTime ? "Enabled" : "Disabled"
+                            }
+                        </div>
+                    `;
+            addTestResult("Server health check passed");
+          } else {
+            healthStatus.textContent = "Server health check failed";
+            healthStatus.style.color = "red";
+            addTestResult("Server health check failed", false);
+          }
+        } catch (error) {
+          healthStatus.textContent = `Health check error: ${error.message}`;
+          healthStatus.style.color = "red";
+          addTestResult(`Health check error: ${error.message}`, false);
+        }
+      }
+
+      // Auto-connect on page load
+      document.addEventListener("DOMContentLoaded", () => {
+        addTestResult("Test page loaded");
+        checkServerHealth();
+      });
+    </script>
+  </body>
+</html>

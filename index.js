@@ -4,19 +4,145 @@ const cors = require("cors");
 const path = require("path");
 const http = require("http");
 require("dotenv").config();
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
+const compression = require("compression");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(bodyParser.json());
-app.use(cors());
+// Middleware - Move security middleware to the top
+app.use(
+  helmet({
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin resource loading
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:", "http:"], // Allow http images
+      },
+    },
+  })
+);
+
+// Compression
+app.use(compression());
+
+// CORS configuration - Allow all origins
+app.use(
+  cors({
+    origin: true, // This allows all origins and works with credentials
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    credentials: true,
+    optionsSuccessStatus: 200, // For legacy browser support
+  })
+);
+
+// Additional middleware to handle preflight requests
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
+// Body parser middleware with increased limits for file uploads
+app.use(bodyParser.json({ limit: "50mb" }));
+app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // DB Connection
 require("./DB/Connection");
 
-// Serve uploads folder
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Add specific CORS middleware for uploads
+app.use("/uploads", (req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Cross-Origin-Resource-Policy", "cross-origin");
+
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
+// Serve uploads folder with proper headers
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"), {
+    maxAge: "1d", // Cache files for 1 day
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, path, stat) => {
+      // Set CORS headers
+      res.set("Access-Control-Allow-Origin", "*");
+      res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.set(
+        "Access-Control-Allow-Headers",
+        "Content-Type, Authorization, X-Requested-With"
+      );
+      res.set("Cross-Origin-Resource-Policy", "cross-origin");
+
+      // Set proper MIME types for different file types
+      if (path.endsWith(".pdf")) {
+        res.setHeader("Content-Type", "application/pdf");
+      } else if (path.endsWith(".jpg") || path.endsWith(".jpeg")) {
+        res.setHeader("Content-Type", "image/jpeg");
+      } else if (path.endsWith(".png")) {
+        res.setHeader("Content-Type", "image/png");
+      } else if (path.endsWith(".gif")) {
+        res.setHeader("Content-Type", "image/gif");
+      } else if (path.endsWith(".webp")) {
+        res.setHeader("Content-Type", "image/webp");
+      }
+    },
+  })
+);
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // limit each IP to 1000 requests per windowMs
+  message: {
+    error: "Too many requests from this IP, please try again later.",
+  },
+});
+app.use("/api/", limiter);
+
+// File upload rate limiting
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // limit each IP to 50 uploads per windowMs
+  message: {
+    error: "Too many file uploads, please try again later.",
+  },
+});
+
+// Apply upload limiting to chat file upload endpoints
+app.use("/api/upload-chat-file", uploadLimiter);
+app.use("/api/upload-chat-files", uploadLimiter);
 
 // Routes
 const userRoutes = require("./Routes/userRoute");
@@ -27,6 +153,9 @@ const notificationRoute = require("./Routes/notificationRoute");
 const scheduleRoute = require("./Routes/scheduleRoute");
 const marketingOthersRoute = require("./Routes/marketing_othersRoute");
 const billRoute = require("./Routes/BillRoute");
+
+// Import chat routes
+const chatRoutes = require("./Routes/chatRoutes");
 
 // ==========User routes=================
 app.use("/api/users", userRoutes);
@@ -44,25 +173,138 @@ app.use("/api/schedule", scheduleRoute);
 app.use("/api/marketing", marketingOthersRoute);
 // ==========Bill routes=================
 app.use("/api/bills", billRoute);
+// ==========Chat routes=================
+app.use("/api/chat", chatRoutes);
+
 // =============PaymentFunctionality================
+// Add your payment routes here
 
-
-
+// API health check
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "API is running",
+    timestamp: new Date().toISOString(),
+    features: {
+      chat: true,
+      fileUpload: true,
+      realTime: true,
+    },
+  });
+});
 
 // Serve frontend/public folder
 app.use(express.static(path.join(__dirname, "public")));
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
 
 // Create HTTP server
 const server = http.createServer(app);
 
 // Import and setup Socket.IO
 const setupSocket = require("./Socket/socket");
-setupSocket(server);
+const io = setupSocket(server);
+
+// Make io available to routes if needed
+app.set("io", io);
+
+// Root route
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
+
+  // Handle specific error types
+  if (err.name === "ValidationError") {
+    return res.status(400).json({
+      success: false,
+      message: "Validation error",
+      details: err.message,
+    });
+  }
+
+  if (err.name === "CastError") {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid ID format",
+      details: err.message,
+    });
+  }
+
+  if (err.code === 11000) {
+    return res.status(409).json({
+      success: false,
+      message: "Duplicate entry",
+      details: "Resource already exists",
+    });
+  }
+
+  // Default error response
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal server error",
+    error: process.env.NODE_ENV === "development" ? err.stack : undefined,
+  });
+});
+
+// Handle 404 for API routes
+app.use("/api/*", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `API route ${req.originalUrl} not found`,
+  });
+});
+
+// Handle all other routes (for SPA)
+app.use("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 // Start Server
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📂 Uploads directory: ${path.join(__dirname, "uploads")}`);
+  console.log(
+    `🌐 Frontend URL: ${
+      process.env.FRONTEND_URL ||
+      "http://localhost:3000" ||
+      "http://localhost:3001"
+    }`
+  );
+  console.log(`💬 Chat functionality: Enabled`);
+  console.log(`📁 File upload: Enabled (Max: 50MB)`);
 });
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received. Shutting down gracefully...");
+  server.close(() => {
+    console.log("Server closed.");
+    process.exit(0);
+  });
+});
+
+process.on("SIGINT", () => {
+  console.log("SIGINT received. Shutting down gracefully...");
+  server.close(() => {
+    console.log("Server closed.");
+    process.exit(0);
+  });
+});
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (err, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", err);
+  server.close(() => {
+    process.exit(1);
+  });
+});
+
+module.exports = app;

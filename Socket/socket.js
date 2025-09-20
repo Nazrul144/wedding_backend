@@ -18,9 +18,56 @@ function setupSocket(server) {
   // Store active users and rooms
   const activeUsers = new Map();
   const roomUsers = new Map();
+  const onlineUsers = new Map(); // Track online status by userId
 
   io.on("connection", (socket) => {
     console.log("✅ Client connected:", socket.id);
+
+    // Handle user coming online
+    socket.on("userOnline", ({ userId, userName }) => {
+      onlineUsers.set(userId, {
+        userName,
+        socketId: socket.id,
+        lastSeen: new Date(),
+      });
+
+      // Broadcast to all rooms this user is part of
+      const userRooms = Array.from(roomUsers.keys()).filter((roomId) => {
+        const roomUserList = roomUsers.get(roomId);
+        return Array.from(roomUserList).some((u) => u.userId === userId);
+      });
+
+      userRooms.forEach((roomId) => {
+        socket.to(roomId).emit("userStatusChanged", {
+          userId,
+          userName,
+          isOnline: true,
+          lastSeen: new Date(),
+        });
+      });
+    });
+
+    // Handle user going offline
+    socket.on("userOffline", ({ userId, userName }) => {
+      if (onlineUsers.has(userId)) {
+        onlineUsers.delete(userId);
+
+        // Broadcast to all rooms this user is part of
+        const userRooms = Array.from(roomUsers.keys()).filter((roomId) => {
+          const roomUserList = roomUsers.get(roomId);
+          return Array.from(roomUserList).some((u) => u.userId === userId);
+        });
+
+        userRooms.forEach((roomId) => {
+          socket.to(roomId).emit("userStatusChanged", {
+            userId,
+            userName,
+            isOnline: false,
+            lastSeen: new Date(),
+          });
+        });
+      }
+    });
 
     // Handle joining a chat room
     socket.on("joinRoom", async ({ roomId, userId, userName }) => {
@@ -81,8 +128,28 @@ function setupSocket(server) {
             );
           }
         }
+
+        // Send existing messages to the user who just joined
+        const existingMessages = await ChatMessage.find({
+          roomId,
+          isDeleted: false,
+        })
+          .sort({ createdAt: 1 })
+          .limit(50) // Load last 50 messages
+          .exec();
+
+        if (existingMessages.length > 0) {
+          socket.emit("loadExistingMessages", {
+            roomId,
+            messages: existingMessages,
+          });
+        }
       } catch (error) {
         console.error("Error managing room in database:", error);
+        socket.emit("joinError", {
+          error: "Failed to join room",
+          roomId,
+        });
       }
 
       // Notify others in the room
@@ -91,6 +158,17 @@ function setupSocket(server) {
         userName,
         message: `${userName} joined the chat`,
       });
+
+      // Send current online users in room
+      const currentUsers = roomUsers.get(roomId);
+      const userList = currentUsers
+        ? Array.from(currentUsers).map((u) => ({
+            userId: u.userId,
+            userName: u.userName,
+          }))
+        : [];
+
+      socket.emit("roomUsers", { roomId, users: userList });
     });
 
     // Handle sending messages

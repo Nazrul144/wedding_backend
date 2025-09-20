@@ -85,23 +85,46 @@ router.post("/upload-chat-file", upload.single("file"), async (req, res) => {
     // Generate file URL (adjust based on your server setup)
     const fileUrl = `/uploads/chat/${req.file.filename}`;
 
-    // File metadata
-    const fileData = {
-      id: Date.now(),
+    // Create message in database
+    const chatMessage = new ChatMessage({
       roomId,
       sender,
       senderName,
       type: fileType,
-      content: req.file.filename,
+      content: req.file.originalname,
+      fileData: {
+        originalName: req.file.originalname,
+        filename: req.file.filename,
+        fileUrl: fileUrl,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+      },
+    });
+
+    await chatMessage.save();
+
+    // File metadata for response
+    const fileData = {
+      id: chatMessage._id,
+      messageId: chatMessage.messageId,
+      roomId,
+      sender,
+      senderName,
+      type: fileType,
+      content: req.file.originalname,
       originalName: req.file.originalname,
       fileUrl: fileUrl,
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
-      uploadedAt: new Date().toISOString(),
+      timestamp: chatMessage.createdAt,
+      fileData: chatMessage.fileData,
     };
 
-    // You can save file metadata to database here if needed
-    // await saveFileMetadata(fileData);
+    // Emit to socket if available
+    const io = req.app.get("io");
+    if (io) {
+      io.to(roomId).emit("receiveMessage", fileData);
+    }
 
     res.json({
       success: true,
@@ -675,6 +698,142 @@ router.get("/user/:userId/rooms", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch user rooms",
+      error: error.message,
+    });
+  }
+});
+
+// Get officiants for chat
+router.get("/officiants", async (req, res) => {
+  try {
+    const User = require("../Models/UserCredential");
+
+    const officiants = await User.find(
+      { role: "officiant", isVerified: true },
+      {
+        _id: 1,
+        name: 1,
+        email: 1,
+        specialization: 1,
+        profilePicture: 1,
+        bio: 1,
+        bookingPackage: 1,
+        languages: 1,
+        location: 1,
+      }
+    ).sort({ name: 1 });
+
+    res.json({
+      success: true,
+      data: officiants,
+    });
+  } catch (error) {
+    console.error("Error fetching officiants:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch officiants",
+      error: error.message,
+    });
+  }
+});
+
+// Create booking proposal message (for officiants)
+router.post("/booking-proposal", async (req, res) => {
+  try {
+    const { roomId, sender, senderName, proposalDetails } = req.body;
+
+    if (!roomId || !sender || !senderName || !proposalDetails) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Missing required fields: roomId, sender, senderName, proposalDetails",
+      });
+    }
+
+    const bookingProposal = {
+      id: `proposal_${Date.now()}`,
+      type: "booking_proposal",
+      title: proposalDetails.title || "Wedding Ceremony Booking",
+      description: proposalDetails.description,
+      price: proposalDetails.price,
+      currency: proposalDetails.currency || "USD",
+      features: proposalDetails.features || [],
+      eventDate: proposalDetails.eventDate,
+      location: proposalDetails.location,
+      duration: proposalDetails.duration,
+      packageId: proposalDetails.packageId,
+      validUntil: proposalDetails.validUntil,
+    };
+
+    const message = new ChatMessage({
+      roomId,
+      sender,
+      senderName,
+      type: "booking_proposal",
+      content: JSON.stringify(bookingProposal),
+    });
+
+    await message.save();
+
+    res.json({
+      success: true,
+      message: "Booking proposal created successfully",
+      data: message,
+    });
+  } catch (error) {
+    console.error("Error creating booking proposal:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create booking proposal",
+      error: error.message,
+    });
+  }
+});
+
+// Handle booking proposal response
+router.post("/booking-proposal/:messageId/respond", async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { action, userId, userName } = req.body; // action: 'accept' or 'decline'
+
+    if (!action || !userId || !userName) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required fields: action, userId, userName",
+      });
+    }
+
+    const message = await ChatMessage.findOne({ messageId });
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking proposal not found",
+      });
+    }
+
+    // Update the message to include response
+    const proposalData = JSON.parse(message.content);
+    proposalData.response = {
+      action,
+      respondedBy: userId,
+      respondedByName: userName,
+      respondedAt: new Date().toISOString(),
+    };
+
+    message.content = JSON.stringify(proposalData);
+    await message.save();
+
+    res.json({
+      success: true,
+      message: `Booking proposal ${action}ed successfully`,
+      data: message,
+      proposalData,
+    });
+  } catch (error) {
+    console.error("Error responding to booking proposal:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to respond to booking proposal",
       error: error.message,
     });
   }

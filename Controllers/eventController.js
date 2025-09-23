@@ -22,6 +22,19 @@ exports.createEvent = async (req, res) => {
   }
 };
 
+// get event by user and officiant id
+exports.getEventsByUserAndOfficiant = async (req, res) => {
+  const { userId, officiantId } = req.params;
+  try {
+    const events = await event.find({ userId, officiantId ,status: { $eq: 'submitted' }});
+    console.log("Fetched events:", events.length);
+    res.status(200).json({ events });
+  } catch (err) {
+    console.error("Error fetching events:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Update event
 exports.updateEvent = async (req, res) => {
   const eventId = req.params.id;

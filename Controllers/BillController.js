@@ -4,19 +4,9 @@ const Bill = require("../Models/BillSchema");
 // ===============Create a Bill ===============
 exports.createBill = async (req, res) => {
     try {
-        const { userId, userName, eventType, eventDate, eventName, officiantName, officiantId, cost, eventId, amount } = req.body;
-        const newBill = new Bill({
-            userId,
-            userName,
-            eventType,
-            eventDate,
-            eventName,
-            officiantName,
-            officiantId,
-            cost,
-            eventId,
-            amount
-        });
+        const newBill = new Bill(req.body);
+        console.log(req.body);
+        console.log("**************************************************************************************************")
         await newBill.save();
         res.status(201).json({ message: "Bill created successfully", bill: newBill });
     } catch (error) {

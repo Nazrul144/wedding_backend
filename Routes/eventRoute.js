@@ -1,7 +1,7 @@
 const express = require("express");
 
 const auth = require("../Middleware/authMiddleware");
-const { createEvent, updateEvent, deleteEvent, getEventsByRole, getAllEvents, getEventsByUserAndOfficiant } = require("../Controllers/eventController");
+const { createEvent, updateEvent, deleteEvent, getEventsByRole, getAllEvents, getEventsByUserAndOfficiant, getEventById } = require("../Controllers/eventController");
 // const { deleteUser } = require("../Controllers/UserController");
 
 const router = express.Router();
@@ -20,6 +20,9 @@ router.get("/officiant-Client/:userId/:officiantId", auth, getEventsByUserAndOff
 
 // get event by user or officiant id
 router.get("/by-role/:id/:role", auth, getEventsByRole);
+
+// get single event by id
+router.get("/:id", auth, getEventById)
 
 // get all events
 router.get("/all",auth,getAllEvents)

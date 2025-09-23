@@ -97,3 +97,18 @@ exports.getEventsByRole = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Get single event by id
+exports.getEventById = async (req, res) => {
+  const eventId = req.params.id;
+  try {
+    const foundEvent = await event.findById(eventId);
+    if (!foundEvent) {
+      return res.status(404).json({ error: "Event not found" });
+    }
+    res.status(200).json({ event: foundEvent });
+  } catch (err) {
+    console.error("Error fetching event by id:", err);
+    res.status(500).json({ error: err.message });
+  }
+};

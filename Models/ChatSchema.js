@@ -33,6 +33,7 @@ const chatMessageSchema = new mongoose.Schema(
         "system",
         "link",
         "booking_proposal",
+        "booking_response",
       ],
       default: "text",
     },
@@ -107,7 +108,7 @@ const chatMessageSchema = new mongoose.Schema(
       clientName: String,
       status: {
         type: String,
-        enum: ["pending", "accept", "decline"],
+        enum: ["pending", "accepted", "declined"],
         default: "pending",
       },
       respondedBy: String,

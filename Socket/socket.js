@@ -2,6 +2,7 @@
 const { Server } = require("socket.io");
 const path = require("path");
 const fs = require("fs").promises;
+const mongoose = require("mongoose");
 const { ChatMessage, ChatRoom } = require("../Models/ChatSchema");
 
 function setupSocket(server) {
@@ -170,6 +171,7 @@ function setupSocket(server) {
         }
 
         // Send existing messages to the user who just joined
+        console.log(`🔍 Loading messages for room: ${roomId}`);
         const existingMessages = await ChatMessage.find({
           roomId,
           isDeleted: false,
@@ -178,11 +180,30 @@ function setupSocket(server) {
           .limit(50) // Load last 50 messages
           .exec();
 
+        console.log(
+          `📊 Found ${existingMessages.length} existing messages for room ${roomId}`
+        );
         if (existingMessages.length > 0) {
+          const bookingProposals = existingMessages.filter(
+            (msg) => msg.type === "booking_proposal"
+          );
+          console.log(
+            `📅 Found ${bookingProposals.length} booking proposals:`,
+            bookingProposals.map((bp) => ({
+              id: bp._id,
+              messageId: bp.messageId,
+              eventName: bp.bookingData?.eventName,
+              status: bp.bookingData?.status,
+            }))
+          );
+
           socket.emit("loadExistingMessages", {
             roomId,
             messages: existingMessages,
           });
+          console.log(`📤 Sent ${existingMessages.length} messages to client`);
+        } else {
+          console.log(`📭 No existing messages found for room ${roomId}`);
         }
       } catch (error) {
         console.error("Error managing room in database:", error);
@@ -324,6 +345,170 @@ function setupSocket(server) {
           .toString(36)
           .substr(2, 9)}`,
       });
+    });
+
+    // Handle booking proposals
+    socket.on("send_booking_proposal", async (data) => {
+      console.log("📅 Booking proposal received:", data);
+
+      const { roomId, bookingData, message } = data;
+
+      try {
+        // Create booking proposal message
+        const messageData = {
+          roomId,
+          sender: bookingData.officiantId,
+          senderName: bookingData.officiantName,
+          type: "booking_proposal",
+          content: message || `Booking proposal for ${bookingData.eventName}`,
+          bookingData: bookingData,
+          timestamp: new Date().toISOString(),
+          serverId: `booking_${Date.now()}_${Math.random()
+            .toString(36)
+            .substr(2, 9)}`,
+        };
+
+        // Save booking proposal to database
+        const chatMessage = new ChatMessage({
+          messageId: messageData.serverId,
+          roomId,
+          sender: bookingData.officiantId,
+          senderName: bookingData.officiantName,
+          type: "booking_proposal",
+          content: messageData.content,
+          bookingData: bookingData,
+        });
+
+        console.log("💾 Saving booking proposal to database:", {
+          messageId: messageData.serverId,
+          roomId,
+          type: "booking_proposal",
+          bookingData: bookingData,
+        });
+
+        const savedMessage = await chatMessage.save();
+        console.log("✅ Booking proposal saved with ID:", savedMessage._id);
+
+        // Broadcast to all users in the room (including sender) - this ensures everyone gets it exactly once
+        const broadcastData = {
+          ...messageData,
+          _id: savedMessage._id,
+          messageId: savedMessage.messageId,
+          createdAt: savedMessage.createdAt,
+        };
+
+        console.log(
+          "📡 Broadcasting booking proposal to room:",
+          roomId,
+          broadcastData
+        );
+        io.to(roomId).emit("booking_proposal_received", broadcastData);
+
+        console.log(
+          `📅 Booking proposal sent in room ${roomId}: ${bookingData.eventName} for $${bookingData.price}`
+        );
+      } catch (error) {
+        console.error("Error sending booking proposal:", error);
+        socket.emit("booking_proposal_error", {
+          error: "Failed to send booking proposal",
+          originalData: data,
+        });
+      }
+    });
+
+    // Handle booking proposal responses
+    socket.on("booking_proposal_response", async (data) => {
+      console.log("📅 Booking proposal response received:", data);
+
+      const { roomId, messageId, response, bookingData } = data;
+
+      try {
+        // Update the booking proposal status in the database
+        // Try to find by either _id (as ObjectId) or messageId field
+        let query;
+        if (mongoose.Types.ObjectId.isValid(messageId)) {
+          query = {
+            $or: [
+              { _id: new mongoose.Types.ObjectId(messageId) },
+              { messageId: messageId },
+            ],
+            type: "booking_proposal",
+          };
+        } else {
+          query = {
+            messageId: messageId,
+            type: "booking_proposal",
+          };
+        }
+
+        console.log("🔍 Searching for booking proposal with query:", query);
+
+        const updatedMessage = await ChatMessage.findOneAndUpdate(
+          query,
+          {
+            $set: {
+              "bookingData.status":
+                response === "accept" ? "accepted" : "declined",
+              "bookingData.respondedBy":
+                bookingData?.clientId || bookingData?.respondedBy,
+              "bookingData.respondedAt": new Date(),
+            },
+          },
+          { new: true }
+        );
+
+        console.log("📝 Updated message:", updatedMessage);
+
+        if (updatedMessage) {
+          // Broadcast the updated booking proposal to all users in the room
+          // This will update the original message for both officiant and client
+          const responseData = {
+            messageId: messageId,
+            response: response,
+            userId: bookingData?.clientId || bookingData?.respondedBy,
+            bookingData: updatedMessage.bookingData,
+          };
+
+          console.log(
+            "📡 Broadcasting response to room:",
+            roomId,
+            responseData
+          );
+          io.to(roomId).emit(
+            "booking_proposal_response_received",
+            responseData
+          );
+
+          console.log(
+            `📅 Booking proposal ${response}ed in room ${roomId}: ${updatedMessage.bookingData?.eventName}`
+          );
+        } else {
+          console.error(
+            "❌ Could not find booking proposal message to update with messageId:",
+            messageId
+          );
+
+          // Try to find any booking proposal in this room for debugging
+          const allBookingProposals = await ChatMessage.find({
+            roomId,
+            type: "booking_proposal",
+          });
+          console.log(
+            "🔍 All booking proposals in room:",
+            allBookingProposals.map((m) => ({
+              _id: m._id,
+              messageId: m.messageId,
+              eventName: m.bookingData?.eventName,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Error processing booking proposal response:", error);
+        socket.emit("booking_proposal_response_error", {
+          error: "Failed to process booking proposal response",
+          originalData: data,
+        });
+      }
     });
 
     // Handle leaving a room

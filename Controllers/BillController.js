@@ -1,4 +1,6 @@
 const Bill = require("../Models/BillSchema");
+const event = require("../Models/EventSchema");
+const { createNotification } = require("./notificationController");
 
 
 // ===============Create a Bill ===============
@@ -6,7 +8,17 @@ exports.createBill = async (req, res) => {
     try {
         const newBill = new Bill(req.body);
         console.log(req.body);
-        console.log("**************************************************************************************************")
+        const associatedEvent = await event.findById(req.body.eventId);
+        if (!associatedEvent) {
+            return res.status(404).json({ message: "Associated event not found" });
+        }
+        associatedEvent.status = "completed";
+        createNotification({
+          userId: req.body.officiantId,
+          type: "bill",
+          customMessage: `payment received from ${req.body.userName} on ${req.body.eventName}.`,
+        });
+        await associatedEvent.save();
         await newBill.save();
         res.status(201).json({ message: "Bill created successfully", bill: newBill });
     } catch (error) {
@@ -50,3 +62,4 @@ exports.updateBillStatus = async (req, res) => {
         res.status(500).json({ message: "Error updating bill status", error });
     }
 };
+

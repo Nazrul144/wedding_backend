@@ -7,7 +7,7 @@ require("dotenv").config();
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const compression = require("compression");
- 
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -69,6 +69,33 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // DB Connection
 require("./DB/Connection");
+
+// Add a simple test to check existing booking proposals
+setTimeout(async () => {
+  try {
+    const { ChatMessage } = require("./Models/ChatSchema");
+    const bookingProposals = await ChatMessage.find({
+      type: "booking_proposal",
+    }).limit(5);
+    console.log(
+      `📊 Database Test: Found ${bookingProposals.length} existing booking proposals`
+    );
+    if (bookingProposals.length > 0) {
+      console.log(
+        "📋 Sample booking proposals:",
+        bookingProposals.map((bp) => ({
+          id: bp._id,
+          roomId: bp.roomId,
+          eventName: bp.bookingData?.eventName,
+          status: bp.bookingData?.status,
+          createdAt: bp.createdAt,
+        }))
+      );
+    }
+  } catch (error) {
+    console.error("❌ Error checking booking proposals:", error);
+  }
+}, 3000); // Wait 3 seconds for DB connection
 
 // Add specific CORS middleware for uploads
 app.use("/uploads", (req, res, next) => {

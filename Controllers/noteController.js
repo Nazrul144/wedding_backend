@@ -58,17 +58,3 @@ exports.getNotesByUserId = async (req, res) => {
   }
 };
 
-// // delete note from user side
-// exports.deleteNote = async (req, res) => {
-//   const noteId = req.params.id;
-//   try {
-//     const deletedNote = await note.findByIdAndDelete(noteId);
-//     if (!deletedNote) {
-//       return res.status(404).json({ error: "Note not found" });
-//     }
-//     res.status(200).json({ msg: "Note deleted successfully", deletedNote });
-//   } catch (err) {
-//     console.error("Error deleting note:", err);
-//     res.status(500).json({ error: err.message });
-//   }
-// };

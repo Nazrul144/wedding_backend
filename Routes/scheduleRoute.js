@@ -6,7 +6,8 @@ const {
   createSchedule,
   getSchedulesByUser,
   updateScheduleStatus,
-  deleteSchedule
+  deleteSchedule,
+  getScheduleByOfficiant
 } = require("../Controllers/schedulerController");
 
 
@@ -15,6 +16,9 @@ router.post("/create", auth, createSchedule);
 
 // Get schedules for a user
 router.get("/get/:userId", auth, getSchedulesByUser);
+
+// Get schedules for an officiant
+router.get("/get-officiant/:userId", auth, getScheduleByOfficiant);
 
 // Update schedule status
 router.put("/update/:id", auth, updateScheduleStatus);

@@ -81,16 +81,16 @@ setTimeout(async () => {
       `📊 Database Test: Found ${bookingProposals.length} existing booking proposals`
     );
     if (bookingProposals.length > 0) {
-      console.log(
-        "📋 Sample booking proposals:",
-        bookingProposals.map((bp) => ({
-          id: bp._id,
-          roomId: bp.roomId,
-          eventName: bp.bookingData?.eventName,
-          status: bp.bookingData?.status,
-          createdAt: bp.createdAt,
-        }))
-      );
+      // console.log(
+      //   "📋 Sample booking proposals:",
+      //   bookingProposals.map((bp) => ({
+      //     id: bp._id,
+      //     roomId: bp.roomId,
+      //     eventName: bp.bookingData?.eventName,
+      //     status: bp.bookingData?.status,
+      //     createdAt: bp.createdAt,
+      //   }))
+      // );
     }
   } catch (error) {
     console.error("❌ Error checking booking proposals:", error);

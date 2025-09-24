@@ -13,11 +13,13 @@ exports.createBill = async (req, res) => {
             return res.status(404).json({ message: "Associated event not found" });
         }
         associatedEvent.status = "completed";
-        createNotification({
-          userId: req.body.officiantId,
-          type: "bill",
-          customMessage: `payment received from ${req.body.userName} on ${req.body.eventName}.`,
-        });
+     await createNotification(
+       req.body.officiantId,
+       "bill",
+       `payment received from ${req.body.userName} on ${req.body.eventName}.`
+     );
+
+
         await associatedEvent.save();
         await newBill.save();
         res.status(201).json({ message: "Bill created successfully", bill: newBill });

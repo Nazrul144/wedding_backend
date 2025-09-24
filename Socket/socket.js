@@ -187,15 +187,15 @@ function setupSocket(server) {
           const bookingProposals = existingMessages.filter(
             (msg) => msg.type === "booking_proposal"
           );
-          console.log(
-            `📅 Found ${bookingProposals.length} booking proposals:`,
-            bookingProposals.map((bp) => ({
-              id: bp._id,
-              messageId: bp.messageId,
-              eventName: bp.bookingData?.eventName,
-              status: bp.bookingData?.status,
-            }))
-          );
+          // console.log(
+          //   `📅 Found ${bookingProposals.length} booking proposals:`,
+          //   bookingProposals.map((bp) => ({
+          //     id: bp._id,
+          //     messageId: bp.messageId,
+          //     eventName: bp.bookingData?.eventName,
+          //     status: bp.bookingData?.status,
+          //   }))
+          // );
 
           socket.emit("loadExistingMessages", {
             roomId,

@@ -5,17 +5,15 @@ exports.getUserNotifications = async (req, res) => {
   try {
     // Get user id from auth token
     if (!req.user || !req.user.id) {
+      console.log("User not found in token");
       return res.status(400).json({ error: "User not found in token" });
     }
 
     const tokenUserId = req.user.id;
+    // console.log(`Fetching notifications for user ID: ${tokenUserId}`);
     const notifications = await Notification.find({
       userId: tokenUserId.toString(),
     }).sort({ createdAt: -1 });
-
-    // console.log(
-    //   `Found ${notifications.length} notifications for user ${tokenUserId}`
-    // );
 
     res.status(200).json({ notifications });
   } catch (err) {
@@ -59,9 +57,13 @@ exports.createNotificationManual = async (req, res) => {
 };
 
 // Exported function to create notifications
-exports.createNotification = async (userId, type, customMessage = null) => {
+exports.createNotification = async (userId, type, customMessage ) => {
   try {
     const message = customMessage;
+    if (!message) {
+      console.log("No custom message provided");
+      return null;
+    }
     const notification = new Notification({
       userId,
       message,

@@ -29,6 +29,19 @@ exports.getSchedulesByUser = async (req, res) => {
   }
 };
 
+// shcedule gettng for officiant
+exports.getScheduleByOfficiant = async (req, res) => {
+  try {
+    const officiantId = req.params.userId;
+    console.log("Fetching schedules for officiantId:", officiantId);
+    const schedules = await Schedule.find({ officiantId }).sort({ createdAt: -1 });
+    console.log(`Found ${schedules.length} schedules for officiantId:`, officiantId);
+    res.status(200).json(schedules);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Update schedule status
 exports.updateScheduleStatus = async (req, res) => {
   try {

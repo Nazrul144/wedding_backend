@@ -25,7 +25,6 @@ router.get("/by-role/:id/:role", auth, getEventsByRole);
 router.get("/:id", auth, getEventById)
 
 // get all events
-router.get("/all",auth,getAllEvents)
- 
+router.get("/officiantAccess/all", auth, getAllEvents);
 
 module.exports = router;

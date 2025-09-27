@@ -13,10 +13,16 @@ exports.createBill = async (req, res) => {
             return res.status(404).json({ message: "Associated event not found" });
         }
         associatedEvent.status = "completed";
+        associatedEvent.price = req.body.amount;
      await createNotification(
        req.body.officiantId,
        "bill",
        `payment received from ${req.body.userName} on ${req.body.eventName}.`
+     );
+     await createNotification(
+       req.body.userId,
+       "bill",
+       `payment made to ${req.body.officiantName} on ${req.body.eventName}.`
      );
 
 

@@ -1,11 +1,17 @@
 const { create } = require("../Models/NotificationSchema");
 const Schedule = require("../Models/ScheduleSchema");
+const { createNotification } = require("./notificationController");
 
 // Create a new schedule
 exports.createSchedule = async (req, res) => {
   try {
     const schedule = new Schedule(req.body);
     console.log("Creating schedule with data:", req.body);
+    createNotification(
+      req.body.officiantId,
+      "booking",
+      `You have a new booking from ${req.body.fromUserName} on ${req.body.scheduleDate}.`
+    );
     await schedule.save();
     res.status(201).json(schedule);
   } catch (error) {
@@ -33,9 +39,9 @@ exports.getSchedulesByUser = async (req, res) => {
 exports.getScheduleByOfficiant = async (req, res) => {
   try {
     const officiantId = req.params.userId;
-    console.log("Fetching schedules for officiantId:", officiantId);
+    // console.log("Fetching schedules for officiantId:", officiantId);
     const schedules = await Schedule.find({ officiantId }).sort({ createdAt: -1 });
-    console.log(`Found ${schedules.length} schedules for officiantId:`, officiantId);
+    // console.log(`Found ${schedules.length} schedules for officiantId:`, officiantId);
     res.status(200).json(schedules);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -49,11 +55,13 @@ exports.updateScheduleStatus = async (req, res) => {
     const { scheduleStatus, approvedStatus } = req.body;
     const schedule = await Schedule.findByIdAndUpdate(
         id,
-        { scheduleStatus, approvedStatus },
+        {  approvedStatus },
         { new: true }
     );
-    if(schedule)
-        createNotification(schedule.fromUserId, "Schedule Update", `Your schedule for ${schedule.eventName} has been ${approvedStatus}.`);
+
+    if(schedule) createNotification(schedule.fromUserId, "Schedule Update", `Your booking request has been ${approvedStatus}.`);
+
+    createNotification(schedule.fromUserId,"Booking",`Your booking  has been ${approvedStatus ? "approved" : "rejected"}.`);
     res.status(200).json(schedule);
   } catch (error) {
     res.status(500).json({ error: error.message });
